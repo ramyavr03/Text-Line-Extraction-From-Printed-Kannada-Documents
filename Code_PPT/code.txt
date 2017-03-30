@@ -1,0 +1,215 @@
+%Method1-Morphology based 
+clc;
+clear;
+close all;
+a=imread('Taken\BRHAmerikannda_16.png');
+figure,imshow(a);
+a1=rgb2gray(a);
+figure,imshow(a1);
+level=graythresh(a1);
+a2=im2bw(a1,level);
+figure,imshow(a2);
+%MIN=[2,2];
+se=strel('line',2,2);
+c=imerode(a2,se);
+figure,imshow(c);
+se1=strel('line',1,1);
+d=imdilate(c,se1);
+figure,imshow(d);
+d=~d;
+[r,c]=size(d);
+% Need to come up with a logic to clear the isolated pixels
+cs=double(zeros(1,c));
+%col profile
+for i=1:r,
+    cs=cs+double(d(i,:));
+end
+%figure,plot(cs);
+%row profile
+rs=double(zeros(r,1));
+for i=1:c,
+    rs=rs+double(d(:,i));
+end
+%figure,plot(rs);
+rs=rs';
+ 
+%identify the rows start and end
+min_col=min(find(rs>0));
+max_col=max(find(rs>0));
+min_row=min(find(cs>0));
+max_row=max(find(cs>0));
+ 
+cropI=imcrop(a,[min_row,min_col,max_row-min_row,max_col-min_col]);
+figure,imshow(cropI);
+ 
+cropI1=imcrop(d,[min_row,min_col,max_row-min_row,max_col-min_col]);
+figure,imshow(cropI1);
+red_line=zeros(1,c,3);
+for i=1:c,
+    red_line(:,i,:)=[255,0,0];
+end;
+white_lines_list=find(rs==0);
+list=ones(1,r);
+for i=1:size(white_lines_list,2),
+    list(white_lines_list(i))=0;
+end;
+ a1=zeros(size(a));
+for i=1:r,
+    if(list(i)==0)
+        a1(i,:,:)=red_line(1,:,:);
+    end;
+end;
+figure,imshow(a1);
+ 
+a2=a;
+  for i=2:r-1,
+      if((list(i)==1 && list(i-1)==0))
+          a2(i-1,:,:)=red_line(1,:,:);
+      end;
+      if((list(i-1)==1 && list(i)==0))
+          a2(i-1,:,:)=red_line(1,:,:);
+      end;
+      if(list(i-1)==0 && list(i)==0)
+          a2(i,:,:)=red_line(1,:,:);
+      end;
+      
+  end;
+figure,imshow(a2);
+
+j=1;
+for i=2:r-1,
+    if(list(i-1)==0 && list(i)==1)
+        x=i;
+    end;
+    if(list(i-1)==1 && list(i)==0)
+        y=i-1;
+        z=a(x-1:y+1,:,:);
+      figure,imshow(z);
+    end;
+ end;
+ 
+ 
+ 
+ 
+ 
+%Method2-Horizontal Projection Based
+clc;
+close all;
+clear;
+im=imread('Taken\BRHSringadha_34.png');%read the image
+qw=im;
+if size(im,3)==3 % RGB image %% Convert to gray scale
+    im=rgb2gray(im);
+    figure,imshow(im);
+end
+threshold = graythresh(im); %% Convert to binary image
+im =~im2bw(im,threshold);
+figure,imshow(im); %% Show image binary image;
+%find Area of Interest
+a=(~im);
+ijk=~a;
+xy=sum(ijk,2);
+za=sum(ijk,1);
+figure,plot(xy);
+%figure,plot(za);
+measurements = regionprops(xy == 0, 'Area', 'PixelIdxList');
+fiveLongRegions = find([measurements.Area] >= 0);
+theIndexes = vertcat(measurements(fiveLongRegions).PixelIdxList);
+c=a;
+c(theIndexes,:)=0;
+figure, imshow(c);
+ca=~c;
+%Segmentation of line:
+[x,y]=size(ca);
+mat1=sum(ca,2);%sum the elements of bwrowise and save into column matrix mat1
+mat2=y-mat1;%subtract each element of the sum matrix(mat1) from the width length(no. of columns)
+mat3=mat2~=0;
+mat4=diff(mat3);
+index1=find(mat4);
+[q,w]=size(index1);%size of index2 matrix is q*w
+kap=1;
+lam=1;
+while kap<(q);%number of loops=number of lines
+    k=1;
+    mat5=([]);
+       for j=(index1(lam)+1):1:index1(lam+1)
+         mat5(k,:)=c(j,:); %store the line segmented matrix
+           k=k+1;
+       end
+        lam=lam+2;   
+        kap=kap+1;
+        figure, imshow(mat5);
+end;
+
+
+
+
+
+
+
+%Method3-BoundigBox Based
+clc;    % Clear the command window.
+close all;  % Close all figures (except those of imtool.)
+clear;  % Erase all existing variables.
+fontSize = 18;
+% Read in a standard MATLAB gray scale demo image.
+folder = 'C:\Octave\Octave-3.8.2\src\work';
+baseFileName = 'images (1).jpg';
+% Get the full filename, with path prepended.
+fullFileName = fullfile(folder, baseFileName);
+% Check if file exists.
+if ~exist(fullFileName, 'file')
+	% File doesn't exist -- didn't find it there.  Check the search path for it.
+	fullFileName = baseFileName; % No path this time.
+	if ~exist(fullFileName, 'file')
+		% Still didn't find it.  Alert user.
+		errorMessage = sprintf('Error: %s does not exist in the search path folders.', fullFileName);
+		uiwait(warndlg(errorMessage));
+		return;
+	end
+end
+grayImage = imread(fullFileName);
+% Get the dimensions of the image.  
+% numberOfColorBands should be = 1.
+[rows, columns, numberOfColorBands] = size(grayImage);
+if numberOfColorBands > 1
+	% It's not really gray scale like we expected - it's color.
+	% Convert it to gray scale by taking only the green channel.
+	grayImage = grayImage(:,:,3); % Take green channel.
+end
+% Display the original gray scale image.
+subplot(4, 4, 1);
+figure,imshow(grayImage, []);
+axis on;
+title('Original Grayscale Image', 'FontSize', fontSize);
+
+% Let's compute and display the histogram.
+[pixelCount, grayLevels] = imhist(grayImage);
+pixelCount(end) = 0; % Suppress spike so we can see shape.
+subplot(2, 2, 2); 
+bar(grayLevels, pixelCount);
+grid on;
+title('Histogram of original image', 'FontSize', fontSize);
+xlim([0 grayLevels(end)]); % Scale x axis manually.
+verticalProfile = mean(grayImage, 2);
+subplot(4,4,3);
+plot(verticalProfile);
+% Find the white spaces
+whiteGaps = verticalProfile > 250;
+% Get the centroids of the white gaps
+measurements = regionprops(whiteGaps, 'Centroid');
+allCentroids = [measurements.Centroid];
+centroidX = allCentroids(1:2:end);
+centroidY = allCentroids(2:2:end);
+% Now we have the lines to crop out.
+% Make a new figure
+binaryImage = grayImage < 250;
+figure,imshow(binaryImage );
+for k = 1 : length(centroidY)-1
+	line1 = int32(centroidY(k));
+	line2 = int32(centroidY(k+1));
+	thisLine = binaryImage(line1:line2, :);
+	figure,imshow(thisLine);
+	caption = sprintf('Line #%d', k);
+	title(caption, 'FontSize', fontSize);
+end
